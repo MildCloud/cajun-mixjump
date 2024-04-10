@@ -74,7 +74,7 @@ class JumpEnv:
 
   def __init__(self,
                num_envs: int,
-               config: ml_collections.ConfigDict(),
+               config: ml_collections.ConfigDict,
                device: str = "cuda",
                show_gui: bool = False,
                use_real_robot: bool = False):
@@ -127,7 +127,7 @@ class JumpEnv:
                                 shape=(self._num_envs, 3),
                                 device=self._device)
       # Use the same ratio for all ab/ad motors, all hip motors, all knee motors
-      ratios = torch.concatenate((ratios, ratios, ratios, ratios), dim=1)
+      ratios = torch.cat((ratios, ratios, ratios, ratios), dim=1)
       self._robot.motor_group.strength_ratios = ratios
     else:
       self._robot.motor_group.strength_ratios = strength_ratios
@@ -234,15 +234,15 @@ class JumpEnv:
 
     task_lb = to_torch([-2., -2., -1., -1., -1.], device=self._device)
     task_ub = to_torch([2., 2., 1., 1., 1.], device=self._device)
-    self._observation_lb = torch.concatenate((task_lb, robot_lb))
-    self._observation_ub = torch.concatenate((task_ub, robot_ub))
+    self._observation_lb = torch.cat((task_lb, robot_lb))
+    self._observation_ub = torch.cat((task_ub, robot_ub))
     if self._config.get("observe_heights", False):
       num_heightpoints = len(self._config.measured_points_x) * len(
           self._config.measured_points_y)
-      self._observation_lb = torch.concatenate(
+      self._observation_lb = torch.cat(
           (self._observation_lb,
            torch.zeros(num_heightpoints, device=self._device) - 3))
-      self._observation_ub = torch.concatenate(
+      self._observation_ub = torch.cat(
           (self._observation_ub,
            torch.zeros(num_heightpoints, device=self._device) + 3))
     self._action_lb = to_torch(self._config.action_lb, device=self._device)
@@ -492,6 +492,9 @@ class JumpEnv:
     return self._obs_buf, self._privileged_obs_buf, sum_reward, dones, self._extras
 
   def _resample_command(self, env_ids):
+    # print('resample command')
+    # print('env_ids\n', env_ids)
+    # print('----------------------')
     if env_ids.shape[0] == 0:
       return
 
@@ -526,7 +529,7 @@ class JumpEnv:
     ),
                             dim=1)
 
-    robot_obs = torch.concatenate(
+    robot_obs = torch.cat(
         (
             self._robot.base_position[:, 2:],  # Base height
             self._robot.base_orientation_rpy[:, 0:1] * 0,  # Base roll
@@ -544,7 +547,7 @@ class JumpEnv:
                 (self._num_envs, 12)),
         ),
         dim=1)
-    obs = torch.concatenate((distance_to_goal_local, phase_obs, robot_obs),
+    obs = torch.cat((distance_to_goal_local, phase_obs, robot_obs),
                             dim=1)
     if self._config.get("observation_noise",
                         None) is not None and (not self._use_real_robot):

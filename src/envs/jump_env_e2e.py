@@ -72,7 +72,7 @@ def create_sim(sim_conf):
 class JumpEnvE2E:
   def __init__(self,
                num_envs: int,
-               config: ml_collections.ConfigDict(),
+               config: ml_collections.ConfigDict,
                device: str = "cuda",
                show_gui: bool = False,
                use_real_robot: bool = False):
@@ -126,7 +126,7 @@ class JumpEnvE2E:
                                 shape=(self._num_envs, 3),
                                 device=self._device)
       # Use the same ratio for all ab/ad motors, all hip motors, all knee motors
-      ratios = torch.concatenate((ratios, ratios, ratios, ratios), dim=1)
+      ratios = torch.cat((ratios, ratios, ratios, ratios), dim=1)
       self._robot.motor_group.strength_ratios = ratios
     else:
       self._robot.motor_group.strength_ratios = strength_ratios
@@ -208,15 +208,15 @@ class JumpEnvE2E:
 
     task_lb = to_torch([-2., -2., -1., -1., -1.], device=self._device)
     task_ub = to_torch([2., 2., 1., 1., 1.], device=self._device)
-    self._observation_lb = torch.concatenate((task_lb, robot_lb))
-    self._observation_ub = torch.concatenate((task_ub, robot_ub))
+    self._observation_lb = torch.cat((task_lb, robot_lb))
+    self._observation_ub = torch.cat((task_ub, robot_ub))
     if self._config.get("observe_heights", False):
       num_heightpoints = len(self._config.measured_points_x) * len(
           self._config.measured_points_y)
-      self._observation_lb = torch.concatenate(
+      self._observation_lb = torch.cat(
           (self._observation_lb,
            torch.zeros(num_heightpoints, device=self._device) - 3))
-      self._observation_ub = torch.concatenate(
+      self._observation_ub = torch.cat(
           (self._observation_ub,
            torch.zeros(num_heightpoints, device=self._device) + 3))
     self._action_lb = to_torch(self._config.action_lb, device=self._device)
@@ -251,7 +251,7 @@ class JumpEnvE2E:
       action = action[:, 1:]
 
     action = action.reshape((-1, 2, 3))
-    motor_action = torch.concatenate(
+    motor_action = torch.cat(
         [action[:, 0], action[:, 0], action[:, 1], action[:, 1]], dim=1)
     motor_action[:, [3, 9]] = -motor_action[:, [3, 9]]
 
@@ -409,7 +409,7 @@ class JumpEnvE2E:
     ),
                             dim=1)
 
-    robot_obs = torch.concatenate(
+    robot_obs = torch.cat(
         (
             self._robot.base_position[:, 2:],  # Base height
             self._robot.base_orientation_rpy[:, 0:1],  # Base roll
@@ -425,7 +425,7 @@ class JumpEnvE2E:
                 (self._num_envs, 12)),
         ),
         dim=1)
-    obs = torch.concatenate((distance_to_goal_local, phase_obs, robot_obs),
+    obs = torch.cat((distance_to_goal_local, phase_obs, robot_obs),
                             dim=1)
     if self._config.get("observation_noise",
                         None) is not None and (not self._use_real_robot):

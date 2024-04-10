@@ -12,7 +12,7 @@ class Go1Rewards:
     self._device = self._env.device
 
   def speed_tracking_reward(self):
-    actual_speed = torch.concatenate(
+    actual_speed = torch.cat(
         (self._robot.base_velocity_body_frame[:, :2],
          self._robot.base_angular_velocity_body_frame[:, 2:]),
         dim=1)

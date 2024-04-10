@@ -88,7 +88,7 @@ def compute_desired_acc(
   # if ans in ["y", "Y"]:
   #   import pdb
   #   pdb.set_trace()
-  return torch.concatenate(
+  return torch.cat(
       (desired_lin_acc_body_frame, desired_ang_acc_body_frame), dim=1)
 
 
@@ -104,7 +104,7 @@ def convert_to_skew_symmetric_batch(foot_positions):
   zero = torch.zeros_like(x)
   skew = torch.stack([zero, -z, y, z, zero, -x, -y, x, zero], dim=1).reshape(
       (n, 3, 3, 4))
-  return torch.concatenate(
+  return torch.cat(
       [skew[:, :, :, 0], skew[:, :, :, 1], skew[:, :, :, 2], skew[:, :, :, 3]],
       dim=2)
 
@@ -119,7 +119,7 @@ def construct_mass_mat(foot_positions,
   num_envs = foot_positions.shape[0]
   mass_mat = torch.zeros((num_envs, 6, 12), device=device)
   # Construct mass matrix
-  inv_mass_concat = torch.concatenate([inv_mass] * 4, dim=1)
+  inv_mass_concat = torch.cat([inv_mass] * 4, dim=1)
   mass_mat[:, :3] = inv_mass_concat[None, :, :]
   px = convert_to_skew_symmetric_batch(foot_positions)
   mass_mat[:, 3:6] = torch.matmul(inv_inertia, px)
