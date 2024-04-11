@@ -5,6 +5,7 @@ from typing import Any
 from ml_collections import ConfigDict
 from isaacgym.torch_utils import to_torch
 import torch
+import numpy as np
 
 
 class PhaseGaitGenerator:
@@ -27,6 +28,8 @@ class PhaseGaitGenerator:
     self._config.swing_ratio = to_torch(gait_config.swing_ratio,
                                         device=self._device)
     self._config.stepping_frequency = gait_config.stepping_frequency
+    self._config.bound_initial_offset = to_torch(np.array([0.05, 0.05, -0.4, -0.4]) * (2 * np.pi), device=self._device)
+    self._config.bound_swing_ratio = to_torch(np.array([0.6, 0.6, 0.6, 0.6]), device=self._device)
     self.reset()
 
   def reset(self):
@@ -60,7 +63,9 @@ class PhaseGaitGenerator:
     self._current_phase += 2 * torch.pi * self._stepping_frequency[:, None] * delta_t[:, None]
     true_phase = self._current_phase[:, 0] - self._config.initial_offset[0]
     stack_true_phase = torch.stack([true_phase, true_phase, true_phase, true_phase], dim=1)
-    self._current_phase = torch.where(stack_true_phase > 2*torch.pi, self._config.initial_offset, self._current_phase)
+    self._current_phase = torch.where(stack_true_phase > 2*torch.pi, self._config.bound_initial_offset, self._current_phase)
+    bound_swing_cutoff = torch.ones((self._num_envs, 4), device=self._device) * 2 * torch.pi * (1 - self._config.bound_swing_ratio)
+    self._swing_cutoff = torch.where(stack_true_phase > 2*torch.pi, bound_swing_cutoff, self._swing_cutoff)
     self._cycle_count = torch.where(true_phase > 2*torch.pi, self._cycle_count+1, self._cycle_count)
 
   @property

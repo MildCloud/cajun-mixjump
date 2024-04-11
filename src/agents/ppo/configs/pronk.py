@@ -36,7 +36,7 @@ def get_training_config():
   runner_config.algorithm_class_name = "PPO"
   runner_config.num_steps_per_env = 24
   runner_config.save_interval = 50
-  runner_config.experiment_name = "test_cajun"
+  runner_config.experiment_name = "test_mix"
   runner_config.max_iterations = 500
   config.runner = runner_config
   return config
