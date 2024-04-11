@@ -13,7 +13,7 @@ from rsl_rl.runners import OnPolicyRunner
 from src.envs import env_wrappers
 
 config_flags.DEFINE_config_file(
-    "config", "src/agents/ppo/configs/pronk.py",
+    "config", "src/agents/ppo/configs/mix_jump.py",
     "experiment configuration.")
 flags.DEFINE_integer("num_envs", 2048, "number of parallel environments.")
 flags.DEFINE_bool("use_gpu", True, "whether to use GPU.")

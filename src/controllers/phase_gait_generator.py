@@ -23,24 +23,28 @@ class PhaseGaitGenerator:
     self._num_envs = self._robot.num_envs
     self._device = self._robot._device
     self._config = ConfigDict()
-    self._config.initial_offset = to_torch(gait_config.initial_offset,
-                                           device=self._device)
-    self._config.swing_ratio = to_torch(gait_config.swing_ratio,
-                                        device=self._device)
+
+    pronk_initial_offset = to_torch(gait_config.pronk_initial_offset, device=self._device)
+    self._config.pronk_initial_offset = torch.stack([pronk_initial_offset] * self._num_envs, dim=0)
+    pronk_swing_ratio = to_torch(gait_config.pronk_swing_ratio, device=self._device)
+    self._pronk_swing_cutoff = torch.ones((self._num_envs, 4), device=self._device) * 2 * torch.pi * (1 - pronk_swing_ratio)
+
+    bound_initial_offset = to_torch(gait_config.bound_initial_offset, device=self._device)
+    self._config.bound_initial_offset = torch.stack([bound_initial_offset] * self._num_envs, dim=0)
+    bound_swing_ratio = to_torch(gait_config.bound_swing_ratio, device=self._device)
+    self._bound_swing_cutoff = torch.ones((self._num_envs, 4), device=self._device) * 2 * torch.pi * (1 - bound_swing_ratio)
+    
     self._config.stepping_frequency = gait_config.stepping_frequency
-    self._config.bound_initial_offset = to_torch(np.array([0.05, 0.05, -0.4, -0.4]) * (2 * np.pi), device=self._device)
-    self._config.bound_swing_ratio = to_torch(np.array([0.6, 0.6, 0.6, 0.6]), device=self._device)
     self.reset()
 
   def reset(self):
-    self._current_phase = torch.stack([self._config.initial_offset] *
-                                      self._num_envs,
-                                      axis=0).to(self._device)
-    self._stepping_frequency = torch.ones(
-        self._num_envs, device=self._device) * self._config.stepping_frequency
-    self._swing_cutoff = torch.ones(
-        (self._num_envs, 4),
-        device=self._device) * 2 * torch.pi * (1 - self._config.swing_ratio)
+    rand_gait = torch.where(torch.rand(self._num_envs) < 0.5, True, False)
+    rand_gait = torch.stack([rand_gait] * 4, dim=1).to(self._device)
+    self._initial_offset = torch.where(rand_gait, self._config.pronk_initial_offset, self._config.bound_initial_offset)
+    self._current_phase = self._initial_offset
+    self._swing_cutoff = torch.where(rand_gait, self._pronk_swing_cutoff, self._bound_swing_cutoff)
+    self._stepping_frequency = torch.ones(self._num_envs, device=self._device) * self._config.stepping_frequency
+    
     self._prev_frame_robot_time = self._robot.time_since_reset
     self._first_stance_seen = torch.zeros((self._num_envs, 4),
                                           dtype=torch.bool,
@@ -48,9 +52,17 @@ class PhaseGaitGenerator:
     self._cycle_count = torch.zeros((self._num_envs), device=self._device)
 
   def reset_idx(self, env_ids):
-    self._current_phase[env_ids] = self._config.initial_offset
+    rand_gait = torch.rand(1)
+    if rand_gait[0] < 0.5:
+      self._initial_offset[env_ids] = self._config.pronk_initial_offset[0]
+      self._current_phase[env_ids] = self._initial_offset[env_ids]
+      self._swing_cutoff[env_ids] = self._pronk_swing_cutoff[0]
+    else:
+      self._initial_offset[env_ids] = self._config.bound_initial_offset[0]
+      self._current_phase[env_ids] = self._initial_offset[env_ids]
+      self._swing_cutoff[env_ids] = self._bound_swing_cutoff[0]
+
     self._stepping_frequency[env_ids] = self._config.stepping_frequency
-    self._swing_cutoff[env_ids] = 2 * torch.pi * (1 - self._config.swing_ratio)
     self._prev_frame_robot_time[env_ids] = self._robot.time_since_reset[
         env_ids]
     self._first_stance_seen[env_ids] = 0
@@ -61,11 +73,17 @@ class PhaseGaitGenerator:
     delta_t = current_robot_time - self._prev_frame_robot_time
     self._prev_frame_robot_time = current_robot_time
     self._current_phase += 2 * torch.pi * self._stepping_frequency[:, None] * delta_t[:, None]
-    true_phase = self._current_phase[:, 0] - self._config.initial_offset[0]
+
+    true_phase = self._current_phase[:, 0] - self._initial_offset[:, 0]
     stack_true_phase = torch.stack([true_phase, true_phase, true_phase, true_phase], dim=1)
-    self._current_phase = torch.where(stack_true_phase > 2*torch.pi, self._config.bound_initial_offset, self._current_phase)
-    bound_swing_cutoff = torch.ones((self._num_envs, 4), device=self._device) * 2 * torch.pi * (1 - self._config.bound_swing_ratio)
-    self._swing_cutoff = torch.where(stack_true_phase > 2*torch.pi, bound_swing_cutoff, self._swing_cutoff)
+    rand_gait = torch.where(torch.rand(self._num_envs) < 0.5, True, False)
+    rand_gait = torch.stack([rand_gait] * 4, dim=1).to(self._device)
+    rand_initial_offset = torch.where(rand_gait, self._config.pronk_initial_offset, self._config.bound_initial_offset)
+    rand_swing_cutoff = torch.where(rand_gait, self._pronk_swing_cutoff, self._bound_swing_cutoff)
+
+    self._initial_offset = torch.where(stack_true_phase > 2*torch.pi, rand_initial_offset, self._initial_offset)
+    self._current_phase = torch.where(stack_true_phase > 2*torch.pi, self._initial_offset, self._current_phase)
+    self._swing_cutoff = torch.where(stack_true_phase > 2*torch.pi, rand_swing_cutoff, self._swing_cutoff)
     self._cycle_count = torch.where(true_phase > 2*torch.pi, self._cycle_count+1, self._cycle_count)
 
   @property
@@ -111,7 +129,7 @@ class PhaseGaitGenerator:
 
   @property
   def true_phase(self):
-    return self._current_phase[:, 0] - self._config.initial_offset[0]
+    return self._current_phase[:, 0] - self._initial_offset[:, 0]
 
   @property
   def cycle_progress(self):

@@ -100,7 +100,7 @@ def main(argv):
       logs.extend(info["logs"])
       if done.any():
         print(info["episode"])
-        break
+        # break
 
   print(f"Total reward: {total_reward}")
   print(f"Time elapsed: {time.time() - start_time}")

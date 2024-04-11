@@ -1,7 +1,7 @@
 """Configuration for running PPO using the Pointmass Env"""
 from ml_collections import ConfigDict
 
-from src.envs.configs import pronk
+from src.envs.configs import mix_jump
 from src.envs import jump_env
 
 
@@ -36,7 +36,7 @@ def get_training_config():
   runner_config.algorithm_class_name = "PPO"
   runner_config.num_steps_per_env = 24
   runner_config.save_interval = 50
-  runner_config.experiment_name = "pronk_cajun"
+  runner_config.experiment_name = "test_mix"
   runner_config.max_iterations = 500
   config.runner = runner_config
   return config
@@ -46,5 +46,5 @@ def get_config():
   config = ConfigDict()
   config.training = get_training_config()
   config.env_class = jump_env.JumpEnv
-  config.environment = pronk.get_config()
+  config.environment = mix_jump.get_config()
   return config
