@@ -15,7 +15,7 @@ from src.controllers import phase_gait_generator
 from src.robots import go1
 from src.robots.motors import MotorCommand, MotorControlMode
 
-flags.DEFINE_integer("num_envs", 10, "number of environments to create.")
+flags.DEFINE_integer("num_envs", 2, "number of environments to create.")
 flags.DEFINE_float("total_time_secs", 2.,
                    "total amount of time to run the controller.")
 FLAGS = flags.FLAGS
@@ -62,29 +62,28 @@ def get_init_positions(num_envs: int, distance=1.) -> Sequence[float]:
 def get_gait_config():
   config = ml_collections.ConfigDict()
   config.stepping_frequency = 1
-  config.initial_offset = np.array([0.1, 0.1, 0., 0.]) * (2 * np.pi)
-  config.swing_ratio = np.array([0.7, 0.7, 0.6, 0.6])
+  config.initial_offset = np.array([0., 0., 0., 0.]) * (2 * np.pi)
+  config.swing_ratio = np.array([0.5, 0.5, 0.5, 0.5])
   return config
 
 
 def main(argv):
   del argv  # unused
-  sim_conf = sim_config.get_config(use_gpu=True, show_gui=False)
+  sim_conf = sim_config.get_config(use_gpu=False, show_gui=False)
   sim, viewer = create_sim(sim_conf)
   robot = go1.Go1(num_envs=FLAGS.num_envs,
-                  init_positions=get_init_positions(FLAGS.num_envs),
+                  init_positions=to_torch(get_init_positions(FLAGS.num_envs)),
                   sim=sim,
                   viewer=viewer,
                   sim_config=sim_conf,
-                  motor_control_mode=MotorControlMode.HYBRID,
-                  terrain=None)
+                  motor_control_mode=MotorControlMode.HYBRID)
 
   gait_config = get_gait_config()
   gait_generator = phase_gait_generator.PhaseGaitGenerator(robot, gait_config)
 
   robot.reset()
   num_envs, num_dof = robot.num_envs, robot.num_dof
-  device = "cuda"
+  device = "cpu"
   dummy_command = MotorCommand(desired_position=torch.zeros(
       (num_envs, num_dof), device=device),
                                kp=torch.zeros((num_envs, num_dof),

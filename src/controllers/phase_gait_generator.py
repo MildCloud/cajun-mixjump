@@ -42,6 +42,7 @@ class PhaseGaitGenerator:
     self._first_stance_seen = torch.zeros((self._num_envs, 4),
                                           dtype=torch.bool,
                                           device=self._device)
+    self._cycle_count = torch.zeros((self._num_envs), device=self._device)
 
   def reset_idx(self, env_ids):
     self._current_phase[env_ids] = self._config.initial_offset
@@ -50,14 +51,17 @@ class PhaseGaitGenerator:
     self._prev_frame_robot_time[env_ids] = self._robot.time_since_reset[
         env_ids]
     self._first_stance_seen[env_ids] = 0
+    self._cycle_count[env_ids] = 0
 
   def update(self):
     current_robot_time = self._robot.time_since_reset
     delta_t = current_robot_time - self._prev_frame_robot_time
     self._prev_frame_robot_time = current_robot_time
-    self._current_phase += 2 * torch.pi * self._stepping_frequency[:,
-                                                                   None] * delta_t[:,
-                                                                                   None]
+    self._current_phase += 2 * torch.pi * self._stepping_frequency[:, None] * delta_t[:, None]
+    true_phase = self._current_phase[:, 0] - self._config.initial_offset[0]
+    stack_true_phase = torch.stack([true_phase, true_phase, true_phase, true_phase], dim=1)
+    self._current_phase = torch.where(stack_true_phase > 2*torch.pi, self._config.initial_offset, self._current_phase)
+    self._cycle_count = torch.where(true_phase > 2*torch.pi, self._cycle_count+1, self._cycle_count)
 
   @property
   def desired_contact_state(self):
@@ -116,3 +120,7 @@ class PhaseGaitGenerator:
   @stepping_frequency.setter
   def stepping_frequency(self, new_frequency: torch.Tensor):
     self._stepping_frequency = new_frequency
+
+  @property
+  def cycle_count(self):
+    return self._cycle_count

@@ -313,7 +313,7 @@ class JumpEnv:
             self._extras["episode"]["reward_{}".format(
                 reward_name)] = torch.mean(
                     self._episode_sums[reward_name][env_ids] /
-                    (self._gait_generator.true_phase[env_ids] / (2 * torch.pi)))
+                    (self._cycle_count[env_ids].clip(min=1)))
           else:
             # Normalize by time
             self._extras["episode"]["reward_{}".format(
@@ -469,7 +469,7 @@ class JumpEnv:
     #   pdb.set_trace()
     self._extras["logs"] = logs
     # Resample commands
-    new_cycle_count = (self._gait_generator.true_phase / (2 * torch.pi)).long()
+    new_cycle_count = self.gait_generator.cycle_count.long()
     finished_cycle = new_cycle_count > self._cycle_count
     env_ids_to_resample = finished_cycle.nonzero(as_tuple=False).flatten()
     self._cycle_count = new_cycle_count
@@ -600,8 +600,7 @@ class JumpEnv:
 
   def _episode_terminated(self):
     timeout = (self._steps_count >= self._episode_length)
-    cycles_finished = (self._gait_generator.true_phase /
-                       (2 * torch.pi)) > self._config.get('max_jumps', 1)
+    cycles_finished = (self._gait_generator.cycle_count) > self._config.get('max_jumps', 1)
     return torch.logical_or(timeout, cycles_finished)
 
   def _is_done(self):
@@ -679,8 +678,7 @@ class JumpEnv:
     self._gait_generator._current_phase += 2 * torch.pi * (
         new_length / self.max_episode_length * self._config.get('max_jumps', 1)
         + 1)[:, None]
-    self._cycle_count = (self._gait_generator.true_phase /
-                         (2 * torch.pi)).long()
+    self._cycle_count = self._gait_generator.cycle_count.long()
 
   @property
   def device(self):

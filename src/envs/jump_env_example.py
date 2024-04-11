@@ -10,11 +10,11 @@ import torch
 from src.envs import jump_env
 
 config_flags.DEFINE_config_file('config',
-                                'src/envs/configs/single_jump.py',
+                                'src/envs/configs/pronk.py',
                                 'environment config file.')
-flags.DEFINE_integer('num_envs', 10, "number of environments in parallel.")
+flags.DEFINE_integer('num_envs', 4, "number of environments in parallel.")
 flags.DEFINE_bool('use_gpu', True, 'whether to use gpu.')
-flags.DEFINE_bool('show_gui', True, 'whether to show GUI.')
+flags.DEFINE_bool('show_gui', False, 'whether to show GUI.')
 FLAGS = flags.FLAGS
 
 
