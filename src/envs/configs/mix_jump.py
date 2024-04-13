@@ -61,7 +61,7 @@ def get_config():
       ('foot_slipping', 0.032),
       ('foot_clearance', 0.008),
       ('out_of_bound_action', 0.01),
-      ('knee_contact', 0.064),
+      ('knee_contact', 0.5),
       ('stepping_freq', 0.008),
       ('com_distance_to_goal_squared', 0.016),
       ('com_height', 0.01),
